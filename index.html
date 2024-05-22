@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML Engineer Salary Analysis</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>ML Engineer Salary Analysis</h1>
+    <table id="mainTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Year</th>
+                <th onclick="sortTable(1)">Number of Jobs</th>
+                <th onclick="sortTable(2)">Average Salary (USD)</th>
+            </tr>
+        </thead>
+        <tbody id="mainTableBody"></tbody>
+    </table>
+    <canvas id="lineGraph" width="600" height="400"></canvas>
+    <table id="detailsTable" style="display: none;">
+        <thead>
+            <tr>
+                <th>Job Title</th>
+                <th>Number of Jobs</th>
+            </tr>
+        </thead>
+        <tbody id="detailsTableBody"></tbody>
+    </table>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/main_table')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('mainTableBody');
+                    data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${row.Year}</td>
+                            <td>${row.total_jobs}</td>
+                            <td>${row.average_salary.toFixed(2)}</td>
+                        `;
+                        tr.addEventListener('click', () => showDetails(row.Year));
+                        tableBody.appendChild(tr);
+                    });
+                    drawLineGraph(data);
+                });
+        });
+
+        function showDetails(year) {
+            fetch(`/job_titles/${year}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('detailsTableBody');
+                    tableBody.innerHTML = '';
+                    data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${row['Job Title']}</td>
+                            <td>${row['Count']}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                    document.getElementById('detailsTable').style.display = 'table';
+                });
+        }
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('mainTable');
+            const rows = Array.from(table.rows).slice(1);
+            const sortedRows = rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].textContent;
+                const bText = b.cells[columnIndex].textContent;
+                return isNaN(aText) ? aText.localeCompare(bText) : aText - bText;
+            });
+            sortedRows.forEach(row => table.appendChild(row));
+        }
+
+        function drawLineGraph(data) {
+            const ctx = document.getElementById('lineGraph').getContext('2d');
+            const labels = data.map(row => row.Year);
+            const salaries = data.map(row => row.average_salary);
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Salary (USD)',
+                        data: salaries,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
